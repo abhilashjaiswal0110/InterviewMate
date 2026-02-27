@@ -16,6 +16,49 @@ import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { v4 } from "uuid";
 import { useSendSpeech } from "@/hooks/useSendSpeech";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "./ui/select";
+
+const SENIORITY_OPTIONS = [
+	{ value: "intern", label: "Intern" },
+	{ value: "junior", label: "Junior" },
+	{ value: "mid", label: "Mid-Level" },
+	{ value: "senior", label: "Senior" },
+	{ value: "staff", label: "Staff / Principal" },
+];
+
+const TOPIC_OPTIONS = [
+	"JavaScript",
+	"TypeScript",
+	"React",
+	"Node.js",
+	"Python",
+	"Java",
+	"Go",
+	"System Design",
+	"Data Structures & Algorithms",
+	"SQL / Databases",
+	"Docker / Kubernetes",
+	"AWS / Cloud",
+	"REST APIs",
+	"Microservices",
+	"Machine Learning",
+];
+
+/** Embeds seniority and topics into the description as structured metadata. */
+function buildDescription(
+	description: string,
+	seniority: string,
+	topics: string[]
+): string {
+	const topicsStr = topics.length > 0 ? topics.join(", ") : "General";
+	return `${description}\n\n---METADATA---\nSeniority: ${seniority}\nTopics: ${topicsStr}`;
+}
 
 const initialValues = {
 	dateTime: new Date(),
@@ -34,6 +77,8 @@ const MeetingTypeList = () => {
 	>(undefined);
 	const [values, setValues] = useState(initialValues);
 	const [callDetail, setCallDetail] = useState<Call>();
+	const [seniority, setSeniority] = useState("mid");
+	const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
 	const client = useStreamVideoClient();
 	const { user } = useUser();
 	const { toast } = useToast();
@@ -42,6 +87,14 @@ const MeetingTypeList = () => {
 	);
 
 	const { joinRoom } = useSendSpeech();
+
+	function toggleTopic(topic: string) {
+		setSelectedTopics((prev) =>
+			prev.includes(topic)
+				? prev.filter((t) => t !== topic)
+				: [...prev, topic]
+		);
+	}
 
 	const createMeeting = async () => {
 		if (!client || !user) return;
@@ -56,7 +109,11 @@ const MeetingTypeList = () => {
 			const startsAt =
 				values.dateTime.toISOString() ||
 				new Date(Date.now()).toISOString();
-			const description = values.description;
+			const description = buildDescription(
+				values.description,
+				seniority,
+				selectedTopics
+			);
 			await call.getOrCreate({
 				data: {
 					starts_at: startsAt,
@@ -136,7 +193,11 @@ const MeetingTypeList = () => {
 							"Content-Type": "application/json",
 						},
 						body: JSON.stringify({
-							description: values.description,
+							description: buildDescription(
+								values.description,
+								seniority,
+								selectedTopics
+							),
 							meetingRoomId: mockId,
 						}),
 					}
@@ -180,7 +241,7 @@ const MeetingTypeList = () => {
 							: "interviewer"
 					);
 				}}>
-				Switch to {mode === "interviewee" ? "Interviwer" : "Interviwee"}
+				Switch to {mode === "interviewee" ? "Interviewer" : "Interviewee"}
 			</Button>
 			{mode === "interviewer" ? (
 				<section className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
@@ -262,6 +323,43 @@ const MeetingTypeList = () => {
 							className="w-full rounded bg-dark-3 p-2 focus:outline-none"
 						/>
 					</div>
+					<div className="flex flex-col gap-2.5">
+						<label className="text-base font-normal leading-[22.4px] text-sky-2">
+							Seniority Level
+						</label>
+						<Select value={seniority} onValueChange={setSeniority}>
+							<SelectTrigger className="bg-white dark:bg-black">
+								<SelectValue placeholder="Select level" />
+							</SelectTrigger>
+							<SelectContent>
+								{SENIORITY_OPTIONS.map((opt) => (
+									<SelectItem key={opt.value} value={opt.value}>
+										{opt.label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
+					<div className="flex flex-col gap-2.5">
+						<label className="text-base font-normal leading-[22.4px] text-sky-2">
+							Technical Topics
+						</label>
+						<div className="flex flex-wrap gap-2">
+							{TOPIC_OPTIONS.map((topic) => (
+								<button
+									key={topic}
+									type="button"
+									onClick={() => toggleTopic(topic)}
+									className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+										selectedTopics.includes(topic)
+											? "border-green-600 bg-green-600 text-white"
+											: "border-gray-400 bg-transparent hover:border-green-500"
+									}`}>
+									{topic}
+								</button>
+							))}
+						</div>
+					</div>
 				</MeetingModal>
 			) : (
 				<MeetingModal
@@ -316,11 +414,48 @@ const MeetingTypeList = () => {
 						}
 					/>
 				</div>
+				<div className="flex flex-col gap-2.5">
+					<label className="text-base font-normal leading-[22.4px] text-sky-2">
+						Seniority Level
+					</label>
+					<Select value={seniority} onValueChange={setSeniority}>
+						<SelectTrigger className="bg-white dark:bg-black">
+							<SelectValue placeholder="Select level" />
+						</SelectTrigger>
+						<SelectContent>
+							{SENIORITY_OPTIONS.map((opt) => (
+								<SelectItem key={opt.value} value={opt.value}>
+									{opt.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
+				<div className="flex flex-col gap-2.5">
+					<label className="text-base font-normal leading-[22.4px] text-sky-2">
+						Technical Topics
+					</label>
+					<div className="flex flex-wrap gap-2">
+						{TOPIC_OPTIONS.map((topic) => (
+							<button
+								key={topic}
+								type="button"
+								onClick={() => toggleTopic(topic)}
+								className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+									selectedTopics.includes(topic)
+										? "border-green-600 bg-green-600 text-white"
+										: "border-gray-400 bg-transparent hover:border-green-500"
+								}`}>
+								{topic}
+							</button>
+						))}
+					</div>
+				</div>
 			</MeetingModal>
 			<MeetingModal
 				isOpen={meetingState === "isMockInterview"}
 				onClose={() => setMeetingState(undefined)}
-				title="Start an Mock Interview"
+				title="Start a Mock Interview"
 				className="text-center"
 				buttonText="Start"
 				handleClick={handleMockInterview}>
@@ -338,9 +473,45 @@ const MeetingTypeList = () => {
 						}
 					/>
 				</div>
+				<div className="flex flex-col gap-2.5">
+					<label className="text-base font-normal leading-[22.4px] text-sky-2">
+						Seniority Level
+					</label>
+					<Select value={seniority} onValueChange={setSeniority}>
+						<SelectTrigger className="bg-white dark:bg-black">
+							<SelectValue placeholder="Select level" />
+						</SelectTrigger>
+						<SelectContent>
+							{SENIORITY_OPTIONS.map((opt) => (
+								<SelectItem key={opt.value} value={opt.value}>
+									{opt.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
+				<div className="flex flex-col gap-2.5">
+					<label className="text-base font-normal leading-[22.4px] text-sky-2">
+						Technical Topics
+					</label>
+					<div className="flex flex-wrap gap-2">
+						{TOPIC_OPTIONS.map((topic) => (
+							<button
+								key={topic}
+								type="button"
+								onClick={() => toggleTopic(topic)}
+								className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+									selectedTopics.includes(topic)
+										? "border-green-600 bg-green-600 text-white"
+										: "border-gray-400 bg-transparent hover:border-green-500"
+								}`}>
+								{topic}
+							</button>
+						))}
+					</div>
+				</div>
 			</MeetingModal>
 		</div>
 	);
 };
-
 export default MeetingTypeList;

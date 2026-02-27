@@ -10,6 +10,31 @@ const prisma = new PrismaClient()
 
 const port = 8000;
 
+/**
+ * Parses the structured metadata embedded by the frontend's buildDescription()
+ * into the description field.
+ * Format:
+ *   <user description>
+ *
+ *   ---METADATA---
+ *   Seniority: senior
+ *   Topics: React, Node.js, System Design
+ */
+function parseDescriptionMetadata(raw) {
+    if (!raw) return { description: "", seniority: "mid", topics: "General" };
+    const parts = raw.split("\n\n---METADATA---\n");
+    if (parts.length < 2) return { description: raw, seniority: "mid", topics: "General" };
+    const description = parts[0].trim();
+    const meta = parts[1];
+    const seniorityMatch = meta.match(/Seniority:\s*(.+)/);
+    const topicsMatch = meta.match(/Topics:\s*(.+)/);
+    return {
+        description,
+        seniority: seniorityMatch ? seniorityMatch[1].trim() : "mid",
+        topics: topicsMatch ? topicsMatch[1].trim() : "General",
+    };
+}
+
 const app = express();
 const server = createServer(app);
 const io = new Server(server, {
@@ -215,8 +240,11 @@ io.on("connection", (socket) => {
                 },
             });
 
+            const meta = parseDescriptionMetadata(conversation.description);
             const response = await axios.post("https://interviewmate.azurewebsites.net/new-questions", {
-                description: conversation.description,
+                description: meta.description,
+                seniority: meta.seniority,
+                topics: meta.topics,
                 conversations: conversation.conversation
             });
 
@@ -231,7 +259,7 @@ io.on("connection", (socket) => {
 
     socket.on('need-questions-empty', async (meetingRoomId) => {
         try {
-            const description = await prisma.meetingRoom.findFirst({
+            const room = await prisma.meetingRoom.findFirst({
                 where: {
                     meetingId: meetingRoomId,
                 }, select: {
@@ -239,8 +267,11 @@ io.on("connection", (socket) => {
                 }
             });
 
+            const meta = parseDescriptionMetadata(room.description);
             const response = await axios.post("https://interviewmate.azurewebsites.net/take-description", {
-                description
+                description: meta.description,
+                seniority: meta.seniority,
+                topics: meta.topics,
             });
 
             const questions = response.data;
@@ -284,8 +315,11 @@ io.on("connection", (socket) => {
                 }
 
                 try {
+                    const meta = parseDescriptionMetadata(conversation.description);
                     const res = await axios.post("https://interviewmate.azurewebsites.net/analyze", {
-                        description: conversation.description,
+                        description: meta.description,
+                        seniority: meta.seniority,
+                        topics: meta.topics,
                         conversations: conversation.conversation
                     });
                     // Emit only the data part of the response
