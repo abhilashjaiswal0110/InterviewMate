@@ -50,12 +50,12 @@ export default function QuestionsDropdown({
 					<Button
 						variant="outline"
 						className="text-black dark:text-white">
-						Quetions
+						Questions
 					</Button>
 				</DropdownMenuTrigger>
 				<DropdownMenuContent className="w-96">
 					<DropdownMenuLabel className="flex justify-between">
-						<div>Quetions</div>
+						<div>Questions</div>
 						{questions !== "" ? (
 							<div>
 								{!loading ? (
@@ -93,7 +93,7 @@ export default function QuestionsDropdown({
 										handleWhenEmpty();
 										setLoading(true);
 									}}>
-									Generate Quetions
+									Generate Questions
 								</Button>
 							) : (
 								<Image
